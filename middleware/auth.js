@@ -152,34 +152,47 @@ passport.deserializeUser(async (id, done) => {
 // JWT Authentication Middleware
 export const jwtAuth = passport.authenticate('jwt', { session: false });
 
-// Generate JWT after OAuth success
 export const generateToken = (req, res, next) => {
-  const user = req.user;
-  
-  const token = jwt.sign(
-    { 
-      sub: user._id,
-      email: user.email,
-      role: user.role,
-      iss: jwtOptions.issuer,
-      aud: jwtOptions.audience
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-  
-  const refreshToken = jwt.sign(
-    { sub: user._id },
-    process.env.JWT_SECRET,
-    { expiresIn: '30d' }
-  );
+  try {
+    // Check if user exists
+    if (!req.user || !req.user._id) {
+      throw new Error('User not authenticated');
+    }
 
-  req.authTokens = {
-    token,
-    refreshToken
-  };
-  
-  next();
+    const user = req.user;
+    
+    // Create access token
+    const token = jwt.sign(
+      { 
+        sub: user._id,
+        email: user.email,
+        role: user.role,
+        iss: jwtOptions.issuer,
+        aud: jwtOptions.audience
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    // Create refresh token
+    const refreshToken = jwt.sign(
+      { sub: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // Attach tokens to request
+    req.authToken = token; // Main token for immediate use
+    req.authTokens = {     // Both tokens if needed
+      token,
+      refreshToken
+    };
+    
+    next();
+  } catch (error) {
+    console.error('Token generation error:', error);
+    return res.redirect('/login?error=token_generation_failed');
+  }
 };
 
 // Role-based Access Control

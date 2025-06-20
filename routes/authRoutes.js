@@ -17,11 +17,10 @@ router.get('/google',
 );
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  generateToken,
+  passport.authenticate('google'),
+  generateToken, // Will now properly set req.authToken
   (req, res) => {
-    // Successful authentication, redirect with token
-    res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${req.authToken}`);
+    res.redirect(`${process.env.CLIENT_URL}/test?token=${req.authToken}`);
   }
 );
 
