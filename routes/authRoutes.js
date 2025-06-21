@@ -59,4 +59,22 @@ router.get('/facebook/callback',
   }
 );
 
+
+// // Local Authentication Routes
+// router.post('/register', 
+//   passport.authenticate('local-register', { session: false }),
+//   generateToken,
+//   (req, res) => {
+//     res.json({ token: req.authToken });
+//   }
+// );
+
+// router.post('/login',
+//   passport.authenticate('local-login', { session: false }),
+//   generateToken,
+//   (req, res) => {
+//     res.json({ token: req.authToken });
+//   }
+// );
+
 export default router;

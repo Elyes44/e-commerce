@@ -3,6 +3,8 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
+import { Strategy as LocalStrategy } from 'passport-local';
+import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
@@ -129,6 +131,52 @@ passport.use(new FacebookStrategy({
   }
 }));
 
+
+//  Local Authentication Strategies
+passport.use('local-register', new LocalStrategy(
+  { usernameField: 'email', passReqToCallback: true },
+  async (req, email, password, done) => {
+    try {
+      // Check if email exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return done(null, false, { message: 'Email already registered' });
+      }
+
+      // Create new user
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = new User({
+        email,
+        password: hashedPassword,
+        displayName: req.body.name,
+        role: 'customer',
+        isVerified: false 
+      });
+
+      await newUser.save();
+      done(null, newUser);
+    } catch (error) {
+      done(error);
+    }
+  }
+));
+
+passport.use('local-login', new LocalStrategy(
+  { usernameField: 'email' },
+  async (email, password, done) => {
+    try {
+      const user = await User.findOne({ email });
+      if (!user) return done(null, false, { message: 'Invalid credentials' });
+
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) return done(null, false, { message: 'Invalid credentials' });
+
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  }
+));
 // ==============================================
 //  Session Serialization
 // ==============================================
@@ -216,7 +264,108 @@ export const requireRole = (roles) => {
   };
 };
 
+// validateRegistration function
+export const validateRegistration = (data) => {
+  const { email, password, displayName } = data;
+  const errors = {};
+  
+  // Field Length Limits (Security Hardening)
+  const FIELD_LIMITS = {
+    email: { min: 5, max: 254 }, // RFC 5321 compliant
+    password: { min: 8, max: 128 },
+    displayName: { min: 2, max: 50 }
+  };
+
+  // Email Validation
+  if (!email) {
+    errors.email = 'Email is required';
+  } else {
+    if (email.length < FIELD_LIMITS.email.min) {
+      errors.email = `Email must be at least ${FIELD_LIMITS.email.min} characters`;
+    }
+    if (email.length > FIELD_LIMITS.email.max) {
+      errors.email = `Email cannot exceed ${FIELD_LIMITS.email.max} characters`;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Invalid email format';
+    }
+  }
+
+  // Password Validation
+  if (!password) {
+    errors.password = 'Password is required';
+  } else {
+    const { min, max } = FIELD_LIMITS.password;
+    const hasNumber = /\d/;
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/;
+    
+    if (password.length < min) {
+      errors.password = `Password must be at least ${min} characters`;
+    }
+    if (password.length > max) {
+      errors.password = `Password cannot exceed ${max} characters`;
+    }
+    if (!hasNumber.test(password)) {
+      errors.password = 'Must contain at least one number';
+    }
+    if (!hasSpecialChar.test(password)) {
+      errors.password = 'Must contain one special character (!@#$...)';
+    }
+  }
+
+  // Display Name Validation
+  if (!displayName?.trim()) {
+    errors.displayName = 'Display name is required';
+  } else {
+    const { min, max } = FIELD_LIMITS.displayName;
+    if (displayName.length < min) {
+      errors.displayName = `Name must be at least ${min} characters`;
+    }
+    if (displayName.length > max) {
+      errors.displayName = `Name cannot exceed ${max} characters`;
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    const error = new Error('Validation failed');
+    error.details = errors;
+    throw error;
+  }
+};
+// Usage in Passport strategy
+passport.use('local-register', new LocalStrategy(
+  { usernameField: 'email', passReqToCallback: true },
+  async (req, email, password, done) => {
+    try {
+      validateRegistration({ 
+        email, 
+        password, 
+        displayName: req.body.displayName 
+      });
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw new Error('Email already registered');
+      }
+
+      const user = new User({
+        email,
+        password,
+        displayName: req.body.displayName,
+        provider: 'local'
+      });
+
+      await user.save();
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  }
+));
+
+// ==============================================
 // Token Refresh Middleware
+// ==============================================
 export const refreshToken = async (req, res, next) => {
   const { refreshToken } = req.body;
   
@@ -260,3 +409,5 @@ export const refreshToken = async (req, res, next) => {
     });
   }
 };
+
+

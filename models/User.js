@@ -1,28 +1,76 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, select: false },
-  googleId: String,
-  displayName: String,
-  avatar: String,
-  provider: { type: String, enum: ['local', 'google'], default: 'local' },
-  role: { type: String, enum: ['customer', 'seller', 'admin'], default: 'customer' },
-  isVerified: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
-});
+  email: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+    lowercase: true,
+    maxlength: 254
+  },
+  displayName: {
+    type: String,
+    trim: true,
+    required: [true, 'Display name is required'],
+    maxlength: 50
 
-// Password hashing middleware
+  },
+  password: {
+    type: String,
+    select: false,
+    required: function() {
+      return this.provider === 'local'; 
+    },
+    maxlength: 128
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  facebookId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  provider: {
+    type: String,
+    enum: ['local', 'google', 'facebook'],
+    required: true
+  },
+  role: {
+    type: String,
+    enum: ['customer', 'seller', 'service_provider', 'admin'], 
+    default: 'customer',
+    required: true
+
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  isActive: { 
+  type: Boolean, 
+  default: true 
+},
+notifications: {
+  email: { type: Boolean, default: true },
+  sms: { type: Boolean, default: false },
+  push: { type: Boolean, default: true }
+},
+  avatar: String,
+  lastLogin: Date
+}, { timestamps: true });
+
+
+// Password hashing
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Method to compare passwords
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
 
 export default mongoose.model('User', userSchema);
