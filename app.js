@@ -47,7 +47,7 @@ app.use('/api/auth', userRoutes);
 
 
 // Test Routes (put this after other middleware but before error handlers)
-app.get('/test', (req, res) => {
+app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
