@@ -18,8 +18,10 @@ export const registerLocalUser = async (req, res) => {
     // 3. Create New User
     const newUser = new User({
       email: req.body.email,
-      password: req.body.password, // Will be hashed by pre-save hook
+      password: req.body.password, 
       displayName: req.body.displayName,
+      phone: req.body.phone,       
+      address: req.body.address,
       provider: 'local',
       role: req.body.role || 'customer', // Default role
       isVerified: req.body.role === 'customer' // Auto-verify customers
@@ -41,7 +43,9 @@ export const registerLocalUser = async (req, res) => {
         id: newUser._id,
         email: newUser.email,
         role: newUser.role,
-        displayName: newUser.displayName
+        displayName: newUser.displayName,
+        phone: newUser.phone,      
+        address: newUser.address
       }
     });
     // 6. Secure Response
@@ -52,7 +56,9 @@ export const registerLocalUser = async (req, res) => {
         id: newUser._id,
         email: newUser.email,
         role: newUser.role,
-        displayName: newUser.displayName
+        displayName: newUser.displayName,
+        phone: newUser.phone,      
+        address: newUser.address
       }
     });
 

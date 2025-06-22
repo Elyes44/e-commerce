@@ -17,6 +17,20 @@ const userSchema = new mongoose.Schema({
     maxlength: 50
 
   },
+    address: {
+    type: String,
+    trim: true,
+    required: false,
+    maxlength: 254
+
+  },
+    phone: {
+    type: String,
+    trim: true,
+    required: [true, 'Phone number is required'],
+    maxlength: 50
+
+  },
   password: {
     type: String,
     select: false,
