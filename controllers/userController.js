@@ -19,12 +19,13 @@ export const registerLocalUser = async (req, res) => {
     const newUser = new User({
       email: req.body.email,
       password: req.body.password, 
-      displayName: req.body.displayName,
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
       phone: req.body.phone,       
       address: req.body.address,
       provider: 'local',
-      role: req.body.role || 'customer', // Default role
-      isVerified: req.body.role === 'customer' // Auto-verify customers
+      role: req.body.role || 'customer', 
+      isVerified: req.body.role === 'customer' 
     });
 
     // 4. Save User (password auto-hashed via User model pre-save)
@@ -43,7 +44,8 @@ export const registerLocalUser = async (req, res) => {
         id: newUser._id,
         email: newUser.email,
         role: newUser.role,
-        displayName: newUser.displayName,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
         phone: newUser.phone,      
         address: newUser.address
       }
@@ -56,7 +58,8 @@ export const registerLocalUser = async (req, res) => {
         id: newUser._id,
         email: newUser.email,
         role: newUser.role,
-        displayName: newUser.displayName,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
         phone: newUser.phone,      
         address: newUser.address
       }

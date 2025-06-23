@@ -10,13 +10,29 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     maxlength: 254
   },
-  displayName: {
+  firstName: {
     type: String,
     trim: true,
-    required: [true, 'Display name is required'],
+    required: [true, 'Fist name is required'],
     maxlength: 50
 
   },
+    lastName: {
+    type: String,
+    trim: true,
+    required: [true, 'Last name is required'],
+    maxlength: 50
+
+  },
+
+    displayName : {
+    type: String,
+    trim: true,
+    required: false,
+    maxlength: 50
+
+  },
+
     address: {
     type: String,
     trim: true,

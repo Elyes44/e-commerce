@@ -266,14 +266,15 @@ export const requireRole = (roles) => {
 
 // validateRegistration function
 export const validateRegistration = (data) => {
-  const { email, password, displayName } = data;
+  const { email, password, firstName, lastName } = data;
   const errors = {};
   
   // Field Length Limits (Security Hardening)
   const FIELD_LIMITS = {
     email: { min: 5, max: 254 }, // RFC 5321 compliant
     password: { min: 8, max: 128 },
-    displayName: { min: 2, max: 50 }
+    firstName: { min: 2, max: 50 },
+    lastName: { min: 2, max: 50 }
   };
 
   // Email Validation
@@ -313,16 +314,29 @@ export const validateRegistration = (data) => {
     }
   }
 
-  // Display Name Validation
-  if (!displayName?.trim()) {
-    errors.displayName = 'Display name is required';
+  // First Name Validation
+  if (!firstName?.trim()) {
+    errors.firstName = 'First name is required! Please provide a valid name.';
   } else {
-    const { min, max } = FIELD_LIMITS.displayName;
-    if (displayName.length < min) {
-      errors.displayName = `Name must be at least ${min} characters`;
+    const { min, max } = FIELD_LIMITS.firstName;
+    if (firstName.length < min) {
+      errors.firstName = `First Name must be at least ${min} characters`;
     }
-    if (displayName.length > max) {
-      errors.displayName = `Name cannot exceed ${max} characters`;
+    if (firstName.length > max) {
+      errors.firstName = `First Name cannot exceed ${max} characters`;
+    }
+  }
+
+    // Last Name Validation
+  if (!lastName?.trim()) {
+    errors.lastName = 'Last name is required! Please provide a valid name.';
+  } else {
+    const { min, max } = FIELD_LIMITS.lastName;
+    if (lastName.length < min) {
+      errors.lastName = `Last must be at least ${min} characters`;
+    }
+    if (lastName.length > max) {
+      errors.lastName = `Last cannot exceed ${max} characters`;
     }
   }
 
