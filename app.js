@@ -13,13 +13,22 @@ import userRoutes from './routes/userRoutes.js';
 dotenv.config();
 
 const app = express();
-
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://192.168.100.175:8080'
+]
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true
-}));
+}))
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());

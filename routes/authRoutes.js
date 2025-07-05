@@ -18,7 +18,7 @@ router.get('/google',
 
 router.get('/google/callback',
   passport.authenticate('google'),
-  generateToken, // Will now properly set req.authToken
+  generateToken, 
   (req, res) => {
     res.redirect(`${process.env.CLIENT_URL}/test?token=${req.authToken}`);
   }
