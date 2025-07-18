@@ -13,87 +13,54 @@ const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
     trim: true,
-    required: [true, 'Fist name is required'],
+    required: [true, 'First name is required'],
     maxlength: 50
-
   },
-    lastName: {
+  lastName: {
     type: String,
     trim: true,
     required: [true, 'Last name is required'],
     maxlength: 50
-
   },
-
-    displayName : {
+  address: {
     type: String,
     trim: true,
-    required: false,
-    maxlength: 50
-
-  },
-
-    address: {
-    type: String,
-    trim: true,
-    required: false,
     maxlength: 254
-
   },
-    phone: {
+  phone: {
     type: String,
     trim: true,
     required: [true, 'Phone number is required'],
     maxlength: 50
-
   },
   password: {
     type: String,
+    required: true,
     select: false,
-    required: function() {
-      return this.provider === 'local'; 
-    },
     maxlength: 128
-  },
-  googleId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  facebookId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  provider: {
-    type: String,
-    enum: ['local', 'google', 'facebook'],
-    required: true
   },
   role: {
     type: String,
     enum: ['customer', 'seller', 'service_provider', 'admin'], 
     default: 'customer',
     required: true
-
   },
   isVerified: {
     type: Boolean,
     default: false
   },
   isActive: { 
-  type: Boolean, 
-  default: true 
-},
-notifications: {
-  email: { type: Boolean, default: true },
-  sms: { type: Boolean, default: false },
-  push: { type: Boolean, default: true }
-},
+    type: Boolean, 
+    default: true 
+  },
+  notifications: {
+    email: { type: Boolean, default: true },
+    sms: { type: Boolean, default: false },
+    push: { type: Boolean, default: true }
+  },
   avatar: String,
   lastLogin: Date
 }, { timestamps: true });
-
 
 // Password hashing
 userSchema.pre('save', async function(next) {
@@ -101,6 +68,5 @@ userSchema.pre('save', async function(next) {
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
-
 
 export default mongoose.model('User', userSchema);
