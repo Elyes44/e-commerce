@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/authRoutes.js';
 import refreshTokenRoute from './routes/refreshTokenRoute.js';
+import shopRoutes  from './routes/shopRoutes.js';
 import { authenticateJWT } from './middleware/auth.js'; 
 
 dotenv.config();
@@ -37,6 +38,8 @@ mongoose.connect(process.env.MONGODB_URI)
 // ✅ Routes
 app.use('/api/auth', authRoutes);  // 
 app.use('/api/auth', refreshTokenRoute);
+app.use('/api/shops', shopRoutes);
+
 
 
 // ✅ Testing routes
