@@ -1,28 +1,202 @@
-import Shop from '../models/Shop.js';
+// shopController.js
+import Shop from '../models/Shop.js'; 
+import slugify from 'slugify';
+import path from 'path';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 
-// 🏪 Create a new shop
-export const createShop = async (req, res) => {
+export const createShop = async (req, res, next) => {
   try {
-    const { name, description, logo, banner } = req.body;
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
 
-    // Check if user already owns a shop
-    const existing = await Shop.findOne({ owner: req.user.id });
-    if (existing) {
-      return res.status(400).json({ message: 'User already owns a shop ! ' });
-    }
+    const { name } = req.body;
+    const description = req.body.description || '';
+    const slug = slugify(name, { lower: true });
 
-    const shop = new Shop({
+    const logoPath = req.files?.logo?.[0]?.path || '';
+    const bannerPath = req.files?.banner?.[0]?.path || '';
+
+    const newShop = new Shop({
       name,
       description,
-      logo,
-      banner,
-      owner: req.user.id
+      slug,
+      owner: req.user.id,
+      logo: logoPath,
+      banner: bannerPath,
     });
 
-    await shop.save();
-    res.status(201).json(shop);
+    await newShop.save();
+    res.status(201).json({ message: 'Shop created', shop: newShop });
+
   } catch (err) {
-    console.error('Create shop error:', err);
-    res.status(500).json({ message: err.message || 'Server error' });
+    next(err);
+  }
+};
+
+export const getMyShop = async (req, res) => {
+  try {
+    const shop = await Shop.findOne({ owner: req.user._id });
+    if (!shop) return res.status(404).json({ message: 'Shop not found' });
+    res.status(200).json(shop);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+
+
+
+// export const updateShop = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const shop = await Shop.findOne({ owner: userId });
+
+//     if (!shop) {
+//       return res.status(404).json({ message: 'Shop not found' });
+//     }
+
+//     // Get absolute paths for old images
+//     const oldLogoPath = shop.logo ? path.join(process.cwd(), 'public', shop.logo) : null;
+//     const oldBannerPath = shop.banner ? path.join(process.cwd(), 'public', shop.banner) : null;
+
+//     // Update text fields if provided
+//     if (req.body.name) shop.name = req.body.name;
+//     if (req.body.description) shop.description = req.body.description;
+
+//     // Handle new logo file upload
+//     if (req.files?.logo && req.files.logo[0]) {
+//       let newLogo = req.files.logo[0].path.replace(/\\/g, '/');
+//       if (newLogo.includes('public/')) {
+//         newLogo = newLogo.split('public/')[1];
+//       }
+//       if (oldLogoPath) await deleteFileIfExists(oldLogoPath);
+//       shop.logo = newLogo;
+//     }
+
+//     // Handle new banner file upload
+//     if (req.files?.banner && req.files.banner[0]) {
+//       let newBanner = req.files.banner[0].path.replace(/\\/g, '/');
+//       if (newBanner.includes('public/')) {
+//         newBanner = newBanner.split('public/')[1];
+//       }
+//       if (oldBannerPath) await deleteFileIfExists(oldBannerPath);
+//       shop.banner = newBanner;
+//     }
+
+//     // Re-generate slug if name was changed
+//     if (req.body.name) {
+//       shop.slug = req.body.name
+//         .toLowerCase()
+//         .replace(/[^a-z0-9]+/g, '-')
+//         .replace(/(^-|-$)+/g, '');
+//     }
+
+//     await shop.save();
+
+//     res.status(200).json({ message: 'Shop updated successfully', shop });
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: 'Server error during shop update' });
+//   }
+// };
+
+// async function deleteFileIfExists(filePath) {
+//   try {
+//     await fs.access(filePath);  // Check if file exists
+//     await fs.unlink(filePath);  // Delete the file
+//     console.log(`Deleted old file: ${filePath}`);
+//   } catch (err) {
+//     // File doesn't exist or error, just log
+//     console.log(`File not found or error deleting: ${filePath}`);
+//   }
+// }
+
+
+
+
+
+
+
+
+
+
+const resolvePath = (filePath) => {
+  if (!filePath) return null;
+  
+  // Normalize separators to '/'
+  const normalized = filePath.replace(/\\/g, '/');
+
+  // If absolute path OR already includes 'public/' at start, return as is
+  if (
+    path.isAbsolute(filePath) ||
+    normalized.startsWith('public/')
+  ) {
+    return filePath;
+  }
+
+  // Else join with your base public folder
+  return path.join(process.cwd(), 'public', filePath);
+};
+
+async function deleteFileIfExists(filePath) {
+  try {
+    await fs.access(filePath);
+    await fs.unlink(filePath);
+    console.log(`Deleted old file: ${filePath}`);
+  } catch (err) {
+    console.log(`File not found or error deleting: ${filePath}`);
+  }
+}
+
+export const updateShop = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const shop = await Shop.findOne({ owner: userId });
+
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found' });
+    }
+
+    const oldLogoPath = resolvePath(shop.logo);
+    const oldBannerPath = resolvePath(shop.banner);
+
+    if (req.body.name) shop.name = req.body.name;
+    if (req.body.description) shop.description = req.body.description;
+
+    if (req.files?.logo && req.files.logo[0]) {
+      let newLogo = req.files.logo[0].path.replace(/\\/g, '/');
+      if (newLogo.includes('public/')) {
+        newLogo = newLogo.split('public/')[1];
+      }
+      if (oldLogoPath) await deleteFileIfExists(oldLogoPath);
+      shop.logo = newLogo;
+    }
+
+    if (req.files?.banner && req.files.banner[0]) {
+      let newBanner = req.files.banner[0].path.replace(/\\/g, '/');
+      if (newBanner.includes('public/')) {
+        newBanner = newBanner.split('public/')[1];
+      }
+      if (oldBannerPath) await deleteFileIfExists(oldBannerPath);
+      shop.banner = newBanner;
+    }
+
+    if (req.body.name) {
+      shop.slug = req.body.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+    }
+
+    await shop.save();
+
+    res.status(200).json({ message: 'Shop updated successfully', shop });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error during shop update' });
   }
 };

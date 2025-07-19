@@ -5,11 +5,14 @@ import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { authenticateJWT } from './middleware/auth.js'; 
 
 import authRoutes from './routes/authRoutes.js';
 import refreshTokenRoute from './routes/refreshTokenRoute.js';
 import shopRoutes  from './routes/shopRoutes.js';
-import { authenticateJWT } from './middleware/auth.js'; 
+
+
+
 
 dotenv.config();
 const app = express();
@@ -27,6 +30,7 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.json()); // 
 
 // ✅ No session or passport config here
 
@@ -38,7 +42,8 @@ mongoose.connect(process.env.MONGODB_URI)
 // ✅ Routes
 app.use('/api/auth', authRoutes);  // 
 app.use('/api/auth', refreshTokenRoute);
-app.use('/api/shops', shopRoutes);
+app.use('/api/shop', shopRoutes);
+
 
 
 

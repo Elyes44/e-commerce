@@ -205,51 +205,6 @@ export const loginLocalUser = async (req, res) => {
 };
 
 
-// Logout function to revoke refresh token
-// export const logout = async (req, res) => {
-//   try {
-//     const { refreshToken } = req.body;
-
-//     if (!refreshToken) {
-//       return res.status(400).json({ message: 'Refresh token required' });
-//     }
-
-//     // Decode refresh token without verifying to extract userId
-//     const decoded = jwt.decode(refreshToken);
-//     if (!decoded || !decoded.userId) {
-//       return res.status(400).json({ message: 'Invalid refresh token' });
-//     }
-
-//     const userId = decoded.userId;
-
-//     // Find all active (not revoked) refresh tokens for that user
-//     const tokens = await RefreshToken.find({ user: userId, revoked: false });
-
-//     // Compare hashes to find matching token
-//     let tokenDoc = null;
-//     for (const t of tokens) {
-//       const isMatch = await bcrypt.compare(refreshToken, t.token);
-//       if (isMatch) {
-//         tokenDoc = t;
-//         break;
-//       }
-//     }
-
-//     if (!tokenDoc) {
-//       return res.status(404).json({ message: 'Refresh token not found or already revoked' });
-//     }
-
-//     // Mark the token as revoked (soft delete)
-//     tokenDoc.revoked = true;
-//     await tokenDoc.save();
-
-//     return res.status(200).json({ message: 'Logged out successfully' });
-
-//   } catch (error) {
-//     console.error('Logout error:', error);
-//     return res.status(500).json({ message: 'Internal server error' });
-//   }
-// };
 
 export const logout = async (req, res) => {
   try {
