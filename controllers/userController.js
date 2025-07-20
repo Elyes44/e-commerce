@@ -2,7 +2,8 @@ import User from '../models/User.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import RefreshToken from '../models/RefreshToken.js';
-
+import { v4 as uuidv4 } from 'uuid'; 
+import BlacklistedToken from '../models/BlacklistedToken.js';
 export const registerLocalUser = async (req, res) => {
   console.log('Register endpoint hit');
 
@@ -140,7 +141,7 @@ export const registerLocalUser = async (req, res) => {
 };
 
 
-// Login function for local users
+// Login function for  users
 export const loginLocalUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -155,9 +156,12 @@ export const loginLocalUser = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials !' });
     }
+
+    const jti = uuidv4();
+
    // Generate access token
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id, role: user.role, jti },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -206,22 +210,31 @@ export const loginLocalUser = async (req, res) => {
 
 
 
+
+
 export const logout = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken; // get from cookie
-
-    if (!refreshToken) {
-      return res.status(400).json({ message: 'Refresh token required' });
+    // Step 0: Check access token in Authorization header (required)
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Access token required in Authorization header' });
+    }
+    const accessToken = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid or expired access token' });
     }
 
-    const tokenDoc = await RefreshToken.findOne({ revoked: false });
-
-    // You still need to find the correct token document for this refresh token.
-    // Since you store hashed token in DB, you have to compare:
+    // Step 1: Check and revoke refresh token from cookie
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'Refresh token required in cookie' });
+    }
 
     const allTokens = await RefreshToken.find({ revoked: false });
     let tokenDocFound = null;
-
     for (const tokenDoc of allTokens) {
       const isMatch = await bcrypt.compare(refreshToken, tokenDoc.token);
       if (isMatch) {
@@ -231,25 +244,35 @@ export const logout = async (req, res) => {
     }
 
     if (!tokenDocFound) {
-      return res.status(404).json({ message: 'Refresh token not found or revoked' });
+      return res.status(404).json({ message: 'Refresh token not found or already revoked' });
     }
 
     tokenDocFound.revoked = true;
     await tokenDocFound.save();
+    console.log('Revoked refresh token:', tokenDocFound.token);
 
-    // Clear cookie on logout
+    // Step 2: Blacklist the access token by its jti
+    if (decoded.jti) {
+      const expiresAt = new Date(decoded.exp * 1000);
+      await BlacklistedToken.create({ jti: decoded.jti, expiresAt });
+      console.log('Blacklisted access token jti:', decoded.jti);
+    }
+
+    // Step 3: Clear the refreshToken cookie
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      sameSite: 'strict',
     });
 
     return res.status(200).json({ message: 'Logged out successfully' });
+
   } catch (error) {
     console.error('Logout error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 
 
