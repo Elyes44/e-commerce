@@ -10,6 +10,7 @@ import { authenticateJWT } from './middleware/auth.js';
 import authRoutes from './routes/authRoutes.js';
 import refreshTokenRoute from './routes/refreshTokenRoute.js';
 import shopRoutes  from './routes/shopRoutes.js';
+import productRoute  from './routes/productRoutes.js'; 
 
 
 
@@ -43,6 +44,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', authRoutes);  // 
 app.use('/api/auth', refreshTokenRoute);
 app.use('/api/shop', shopRoutes);
+app.use('/api/product', productRoute);
 
 
 
