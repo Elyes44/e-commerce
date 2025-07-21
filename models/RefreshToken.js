@@ -16,7 +16,10 @@ const refreshTokenSchema = new mongoose.Schema({
     default: Date.now,
     expires: '30d' 
   },
-    revoked: { type: Boolean, default: false }
+    revoked: { type: Boolean, default: false },
+    
+    lookupHash: { type: String, required: true, index: true }
+
 
 });
 

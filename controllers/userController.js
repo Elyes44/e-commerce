@@ -4,6 +4,12 @@ import jwt from 'jsonwebtoken';
 import RefreshToken from '../models/RefreshToken.js';
 import { v4 as uuidv4 } from 'uuid'; 
 import BlacklistedToken from '../models/BlacklistedToken.js';
+import crypto from 'crypto';
+
+
+
+
+
 export const registerLocalUser = async (req, res) => {
   console.log('Register endpoint hit');
 
@@ -146,53 +152,60 @@ export const loginLocalUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Find user by email including password field
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ error: 'Invalid user' });
     }
 
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Password match:', isMatch);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials !' });
     }
 
+    // Generate unique JWT ID for access token
     const jti = uuidv4();
 
-   // Generate access token
+    // Generate access token (15 mins)
     const token = jwt.sign(
       { userId: user._id, role: user.role, jti },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
 
-    // Generate refresh token
+    // Generate refresh token (30 days)
     const refreshTokenRaw = jwt.sign(
       { userId: user._id },
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: '30d' }
     );
 
-
-    // Hash the refresh token
+    // Hash the refresh token with bcrypt (slow, secure)
     const hashedToken = await bcrypt.hash(refreshTokenRaw, 10);
 
-   // Save hashed refresh token in DB
+    // Compute fast SHA-256 hash for quick DB lookup
+    const lookupHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
+
+    // Save refresh token with hashed token and lookup hash
     await RefreshToken.create({
       user: user._id,
-      token: hashedToken
+      token: hashedToken,
+      lookupHash,
     });
+
+    // Set refresh token as secure HttpOnly cookie
     res.cookie('refreshToken', refreshTokenRaw, {
-    httpOnly: true,
-    secure: false, // Set to true in production
-    // secure: process.env.NODE_ENV === 'production', // Uncomment for production
-    sameSite: 'strict', 
-    maxAge: 30 * 24 * 60 * 60 * 1000, 
-  });
+      httpOnly: true,
+      secure: false, // set to true in production (HTTPS)
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    // Send response (without sending refresh token in body)
     res.json({
       success: true,
       token,
-      refreshToken: refreshTokenRaw, 
       user: {
         id: user._id,
         email: user.email,
@@ -200,8 +213,8 @@ export const loginLocalUser = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
-        address: user.address
-      }
+        address: user.address,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: 'Login failed', details: err.message });
@@ -211,23 +224,12 @@ export const loginLocalUser = async (req, res) => {
 
 
 
-
 export const logout = async (req, res) => {
   try {
-    // Step 0: Check access token in Authorization header (required)
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Access token required in Authorization header' });
-    }
-    const accessToken = authHeader.split(' ')[1];
-    let decoded;
-    try {
-      decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({ message: 'Invalid or expired access token' });
-    }
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const decoded = req.tokenExpired ? req.decoded : jwt.verify(accessToken, process.env.JWT_SECRET);
 
-    // Step 1: Check and revoke refresh token from cookie
+    // Step 1: Revoke Refresh Token
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
       return res.status(400).json({ message: 'Refresh token required in cookie' });
@@ -249,16 +251,14 @@ export const logout = async (req, res) => {
 
     tokenDocFound.revoked = true;
     await tokenDocFound.save();
-    console.log('Revoked refresh token:', tokenDocFound.token);
 
-    // Step 2: Blacklist the access token by its jti
+    // Step 2: Blacklist Access Token
     if (decoded.jti) {
       const expiresAt = new Date(decoded.exp * 1000);
       await BlacklistedToken.create({ jti: decoded.jti, expiresAt });
-      console.log('Blacklisted access token jti:', decoded.jti);
     }
 
-    // Step 3: Clear the refreshToken cookie
+    // Step 3: Clear Cookie
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -285,7 +285,19 @@ export const refreshAccessToken = async (req, res) => {
   }
 
   try {
-    const tokenDoc = await RefreshToken.findOne({});
+    const allTokens = await RefreshToken.find({ revoked: false });
+let tokenDoc = null;
+for (const t of allTokens) {
+  const match = await bcrypt.compare(refreshToken, t.token);
+  if (match) {
+    tokenDoc = t;
+    break;
+  }
+}
+if (!tokenDoc || tokenDoc.revoked) {
+  return res.status(403).json({ message: 'Token revoked or invalid' });
+}
+
 
     if (!tokenDoc) {
       return res.status(401).json({ message: 'Invalid refresh token' });
