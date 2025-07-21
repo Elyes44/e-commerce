@@ -3,7 +3,6 @@ import Shop from '../models/Shop.js';
 import slugify from 'slugify';
 import path from 'path';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
 
 export const createShop = async (req, res, next) => {
   try {
