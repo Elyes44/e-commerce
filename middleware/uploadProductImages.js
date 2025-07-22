@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 
 export const uploadProductImagesMiddleware = multer({
   storage,
-  limits: { fileSize: 9  * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 9  * 1024 * 1024 }, // 9 MB limit
   fileFilter(req, file, cb) {
     const allowedTypes = /jpeg|jpg|png|webp/;
     const ext = path.extname(file.originalname).toLowerCase();
