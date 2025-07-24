@@ -5,10 +5,13 @@ import RefreshToken from '../models/RefreshToken.js';
 import { v4 as uuidv4 } from 'uuid'; 
 import BlacklistedToken from '../models/BlacklistedToken.js';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 
-
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const registerLocalUser = async (req, res) => {
   console.log('Register endpoint hit');
@@ -323,6 +326,67 @@ if (!tokenDoc || tokenDoc.revoked) {
   }
 };
 
+// Function to upload user avatar
+export const uploadUserAvatar = async (req, res) => {
+  try {
+    const userId = req.user._id; // Assuming req.user is set by auth middleware
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
 
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { avatar: avatarUrl },
+      { new: true }
+    ).select('-password');
+
+    res.json({ message: 'Avatar updated successfully', user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error while updating avatar' });
+  }
+};
+
+// Function to delete user avatar
+
+export const deleteAvatar = async (req, res) => {
+  try {
+    const userId = req.user.id; // assuming you have middleware that sets req.user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.avatar) {
+      return res.status(400).json({ message: 'No avatar to delete' });
+    }
+
+    // Build full path to the avatar
+const tempAvatarPath = path.join(__dirname, '..', 'public', user.avatar.replace(/^\/+/, ''));
+
+    // Check if file exists before deleting
+    if (fs.existsSync(tempAvatarPath)) {
+      fs.unlink(tempAvatarPath, (err) => {
+        if (err) {
+          console.error("Error deleting avatar file from disk:", err);
+        } else {
+          console.log("Avatar file deleted from disk");
+        }
+      });
+    } else {
+      console.warn("File not found on disk:", tempAvatarPath);
+    }
+
+    // Remove avatar from user and save
+    user.avatar = undefined;
+    await user.save();
+
+    res.status(200).json({ message: 'Avatar deleted successfully' });
+
+  } catch (error) {
+    console.error("Error deleting avatar:", error);
+    res.status(500).json({ message: 'Error deleting avatar' });
+  }
+};
 
