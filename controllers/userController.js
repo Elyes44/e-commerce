@@ -116,7 +116,7 @@ export const registerLocalUser = async (req, res) => {
       address,
       provider: 'local',
       role: role || 'customer',
-      isVerified: role === 'customer' // Auto-verify customers
+      isVerified: role === 'customer' 
     });
 
     await newUser.save();
@@ -327,25 +327,63 @@ if (!tokenDoc || tokenDoc.revoked) {
 };
 
 // Function to upload user avatar
+
 export const uploadUserAvatar = async (req, res) => {
   try {
-    const userId = req.user._id; // Assuming req.user is set by auth middleware
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const userId = req.user._id;
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { avatar: avatarUrl },
-      { new: true }
-    ).select('-password');
+    const newAvatarUrl = `/uploads/avatars/${req.file.filename}`;
 
-    res.json({ message: 'Avatar updated successfully', user });
+    // Get current user
+    const user = await User.findById(userId);
+    if (!user) {
+      // Delete the uploaded file since user doesn't exist
+      const uploadedPath = path.join(process.cwd(), 'public', 'uploads', 'avatars', req.file.filename);
+      if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // If the user already has an avatar, delete it from disk
+    if (user.avatar) {
+      const oldAvatarPath = path.join(process.cwd(), 'public', user.avatar);
+      if (fs.existsSync(oldAvatarPath)) {
+        fs.unlinkSync(oldAvatarPath);
+      } else {
+        console.log('Old avatar file not found on disk:', oldAvatarPath);
+      }
+    }
+
+    // Update user with new avatar
+    user.avatar = newAvatarUrl;
+    await user.save();
+
+    res.status(200).json({
+      message: 'Avatar uploaded and updated successfully',
+      user: user.toObject({ getters: true, virtuals: false }),
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Error uploading/updating avatar:', err);
     res.status(500).json({ message: 'Server error while updating avatar' });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Function to delete user avatar
 
@@ -390,3 +428,38 @@ const tempAvatarPath = path.join(__dirname, '..', 'public', user.avatar.replace(
   }
 };
 
+
+// Function to update personal information
+export const updatePersonalInfo = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Only allow specific fields to be updated
+    const { firstName, lastName, address } = req.body;
+
+    const updates = {};
+
+    if (firstName !== undefined) updates.firstName = firstName;
+    if (lastName !== undefined) updates.lastName = lastName;
+    if (address !== undefined) updates.address = address;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'Personal information updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Error updating personal info:', error);
+    res.status(500).json({ message: 'Server error while updating personal information' });
+  }
+};
