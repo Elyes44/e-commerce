@@ -70,7 +70,9 @@ const orderSchema = new mongoose.Schema({
   totalPrice: {
     type: Number,
     required: true,
-  }
+  },
+  cancelDescription: 
+  { type: String, default: '' }
 
 }, { timestamps: true });
 

@@ -2,6 +2,8 @@ import Order from '../models/Order.js';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
 
+
+// Create a new order
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -98,5 +100,52 @@ export const createOrder = async (req, res) => {
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({ message: 'Server error while creating order' });
+  }
+};
+
+
+
+// Get all orders for the authenticated user
+export const getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const orders = await Order.find({ user: req.user.id }).populate('items.product') 
+  .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, orders });
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch your orders.' });
+  }
+};
+
+
+// Cancel an order
+export const cancelOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { description } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Check if the order is still pending and unpaid
+    if (order.status !== 'pending' || order.paymentStatus !== 'unpaid') {
+      return res.status(400).json({ message: 'Only pending and unpaid orders can be cancelled' });
+    }
+
+    order.status = 'cancelled';
+    order.cancelDescription = description || 'No reason provided';
+
+    await order.save();
+
+    res.status(200).json({ message: 'Order cancelled successfully', order });
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
