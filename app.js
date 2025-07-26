@@ -12,6 +12,7 @@ import refreshTokenRoute from './routes/refreshTokenRoute.js';
 import shopRoutes  from './routes/shopRoutes.js';
 import productRoute  from './routes/productRoutes.js'; 
 import userRoutes from './routes/userRoutes.js'; 
+import orderRoutes from './routes/orderRoutes.js'; 
 
 
 
@@ -47,6 +48,7 @@ app.use('/api/auth', refreshTokenRoute);
 app.use('/api/shop', shopRoutes);
 app.use('/api/product', productRoute);
 app.use('/api/user', userRoutes);
+app.use('/api/order', orderRoutes);
 
 
 
