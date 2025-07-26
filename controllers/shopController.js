@@ -13,6 +13,7 @@ export const createShop = async (req, res, next) => {
     const { name } = req.body;
     const description = req.body.description || '';
     const address = req.body.address || '';
+    const phone = req.body.phone || '';
     const slug = slugify(name, { lower: true });
 
 
@@ -23,6 +24,7 @@ export const createShop = async (req, res, next) => {
       name,
       description,
       address,
+      phone,
       slug,
       owner: req.user.id,
       logo: logoPath,
@@ -94,6 +96,7 @@ export const updateShop = async (req, res) => {
     if (req.body.name) shop.name = req.body.name;
     if (req.body.description) shop.description = req.body.description;
     if (req.body.address) shop.address = req.body.address;
+    if (req.body.phone) shop.phone = req.body.phone;
 
     if (req.files?.logo && req.files.logo[0]) {
       let newLogo = req.files.logo[0].path.replace(/\\/g, '/');

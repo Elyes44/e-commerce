@@ -15,6 +15,13 @@ const shopSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+
   slug: {
     type: String,
     required: true,
