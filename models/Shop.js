@@ -11,6 +11,10 @@ const shopSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  address: {
+    String,
+    required: true
+  },
   slug: {
     type: String,
     required: true,
