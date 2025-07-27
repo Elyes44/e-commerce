@@ -44,9 +44,9 @@ const orderSchema = new mongoose.Schema({
 
   items: [orderItemSchema],
 
-discount: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'Discount',
+discountCoupon: {
+  type: String,
+  required: false,
   default: null,
 },
 

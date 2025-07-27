@@ -70,8 +70,8 @@ export const validateCoupon = async (req, res) => {
 
     const now = new Date();
     if (now < discount.validFrom || now > discount.validUntil) {
-      return res.status(400).json({ message: 'Coupon is expired or not yet active' });
-    }
+      return res.status(400).json({ message: 'Coupon Expired' });
+    } 
 
     res.status(200).json({
       success: true,
