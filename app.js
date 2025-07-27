@@ -13,6 +13,7 @@ import shopRoutes  from './routes/shopRoutes.js';
 import productRoute  from './routes/productRoutes.js'; 
 import userRoutes from './routes/userRoutes.js'; 
 import orderRoutes from './routes/orderRoutes.js'; 
+import discountRoutes from './routes/discountRoutes.js'; 
 
 
 
@@ -33,7 +34,6 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.json()); // 
 
 // ✅ No session or passport config here
 
@@ -49,6 +49,7 @@ app.use('/api/shop', shopRoutes);
 app.use('/api/product', productRoute);
 app.use('/api/user', userRoutes);
 app.use('/api/order', orderRoutes);
+app.use('/api/discount', discountRoutes);
 
 
 

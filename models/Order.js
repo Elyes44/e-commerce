@@ -44,10 +44,11 @@ const orderSchema = new mongoose.Schema({
 
   items: [orderItemSchema],
 
-  discountCoupon: {
-    type: String,
-    default: null,
-  },
+discount: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Discount',
+  default: null,
+},
 
   paymentMethod: {
     type: String,
