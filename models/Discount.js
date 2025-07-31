@@ -5,35 +5,35 @@ const discountSchema = new mongoose.Schema(
     code: {
       type: String,
       required: true,
-      unique: true,      // ✅ ensures no duplicates in DB
-      uppercase: true,   // ✅ normalize codes (e.g., "ABC123" == "abc123")
-      trim: true,        // ✅ removes any leading/trailing spaces
+      unique: true,      
+      uppercase: true,  
+      trim: true,        
     },
     type: {
       type: String,
-      enum: ['percentage', 'fixed'], // ✅ allows flexible discounts
-      required: true,                // ✅ must specify how to apply it
+      enum: ['percentage', 'fixed'], 
+      required: true,                
     },
     value: {
       type: Number,
       required: true,
-      min: 1,  // ✅ minimum valid discount (no 0 or negative discounts)
+      min: 1, 
     },
     isUsed: {
       type: Boolean,
-      default: false, // ✅ flag to mark coupon as used (single-use behavior)
+      default: false, 
     },
     validFrom: {
       type: Date,
-      default: Date.now, // ✅ coupon becomes active immediately unless set otherwise
+      default: Date.now, 
     },
     validUntil: {
       type: Date,
-      required: true, // ✅ allows you to set an expiry date
+      required: true, 
     },
   },
   {
-    timestamps: true, // ✅ createdAt & updatedAt fields auto-managed by Mongoose
+    timestamps: true, 
   }
 );
 

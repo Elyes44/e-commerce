@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { validateAccessToken } from '../utils/tokenUtils.js'; 
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -251,7 +252,11 @@ export const logout = async (req, res) => {
     if (!tokenDocFound) {
       return res.status(404).json({ message: 'Refresh token not found or already revoked' });
     }
-
+// If lookupHash is missing, calculate and set it
+    if (!tokenDocFound.lookupHash) {
+      const lookupHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      tokenDocFound.lookupHash = lookupHash;
+    }
     tokenDocFound.revoked = true;
     await tokenDocFound.save();
 
@@ -280,51 +285,203 @@ export const logout = async (req, res) => {
 
 
 
+
+// Function to refresh access token using refresh token
+// export const refreshAccessToken = async (req, res) => {
+//   const refreshToken = req.cookies.refreshToken;
+
+//   if (!refreshToken) {
+//     return res.status(400).json({ message: 'Refresh token required' });
+//   }
+
+//   try {
+//     const allTokens = await RefreshToken.find({ revoked: false });
+// let tokenDoc = null;
+// for (const t of allTokens) {
+//   const match = await bcrypt.compare(refreshToken, t.token);
+//   if (match) {
+//     tokenDoc = t;
+//     break;
+//   }
+// }
+// if (!tokenDoc || tokenDoc.revoked) {
+//   return res.status(403).json({ message: 'Token revoked or invalid' });
+// }
+
+
+//     if (!tokenDoc) {
+//       return res.status(401).json({ message: 'Invalid refresh token' });
+//     }
+
+//     const isValid = await bcrypt.compare(refreshToken, tokenDoc.token);
+//     if (!isValid || tokenDoc.revoked) {
+//       return res.status(403).json({ message: 'Token revoked or invalid' });
+//     }
+
+//     const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+//     const newAccessToken = jwt.sign(
+//       { userId: payload.userId },
+//       process.env.JWT_SECRET,
+//       { expiresIn: '15m' }
+//     );
+
+//     res.json({ accessToken: newAccessToken });
+//   } catch (err) {
+//     console.error('Refresh token error:', err);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// };
+
+
+
+
 export const refreshAccessToken = async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-
-  if (!refreshToken) {
-    return res.status(400).json({ message: 'Refresh token required' });
-  }
-
   try {
-    const allTokens = await RefreshToken.find({ revoked: false });
-let tokenDoc = null;
-for (const t of allTokens) {
-  const match = await bcrypt.compare(refreshToken, t.token);
-  if (match) {
-    tokenDoc = t;
-    break;
-  }
-}
-if (!tokenDoc || tokenDoc.revoked) {
-  return res.status(403).json({ message: 'Token revoked or invalid' });
-}
-
-
-    if (!tokenDoc) {
-      return res.status(401).json({ message: 'Invalid refresh token' });
+    // Step 1: Get refresh token from cookie
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'Refresh token required' });
     }
 
-    const isValid = await bcrypt.compare(refreshToken, tokenDoc.token);
-    if (!isValid || tokenDoc.revoked) {
+    // Step 2: Find and validate the refresh token
+    const allTokens = await RefreshToken.find({ revoked: false });
+    let tokenDoc = null;
+    for (const t of allTokens) {
+      const match = await bcrypt.compare(refreshToken, t.token);
+      if (match) {
+        tokenDoc = t;
+        break;
+      }
+    }
+
+    if (!tokenDoc || tokenDoc.revoked) {
       return res.status(403).json({ message: 'Token revoked or invalid' });
     }
 
-    const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    // Step 3: Verify the refresh token
+    let payload;
+    try {
+      payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
 
+    // Step 4: Find the user
+    const user = await User.findById(tokenDoc.user);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    // Step 5: Check the access token
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (accessToken) {
+      const validationResult = await validateAccessToken(accessToken);
+      if (validationResult.valid && validationResult.decoded) {
+        // Blacklist the valid access token
+        await BlacklistedToken.create({
+          jti: validationResult.decoded.jti,
+          expiresAt: new Date(validationResult.decoded.exp * 1000),
+        });
+      }
+      // Note: If invalid or expired, no action is needed
+    }
+
+    // Step 6: Generate new access token
+    const jti = uuidv4();
     const newAccessToken = jwt.sign(
-      { userId: payload.userId },
+      { userId: user._id, role: user.role, jti },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
 
-    res.json({ accessToken: newAccessToken });
-  } catch (err) {
-    console.error('Refresh token error:', err);
+    // Step 7: Send new access token
+    res.json({
+      success: true,
+      accessToken: newAccessToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        address: user.address,
+      },
+    });
+    console.log('newAccessToken:', newAccessToken);  
+  } catch (error) {
+    console.error('Refresh token error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Function to upload user avatar
 
@@ -370,17 +527,6 @@ export const uploadUserAvatar = async (req, res) => {
     res.status(500).json({ message: 'Server error while updating avatar' });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
 
 
 
